@@ -1,0 +1,180 @@
+/* 
+Nabeeha Khan
+22301304
+CS 224-04
+Lab 05 (b)
+*/
+
+/*
+----------------------------------------------------
+File: dc_motor.c
+Description:
+Controls a DC motor using two push buttons on the
+Beti PIC32 Training Set Card.
+
+- Button 0 (RE0): Rotate clockwise after 1 second
+- Button 1 (RE1): Rotate counter-clockwise after 1 second
+- Motor stops after 1 second
+- If both buttons are pressed, motor does not rotate
+
+Microcontroller: PIC32
+Compiler: mikroC PRO for PIC32
+----------------------------------------------------
+*/
+
+#define CW_MOTOR     LATAbits.LATA0   // Clockwise control pin
+#define CCW_MOTOR    LATAbits.LATA1   // Counter-clockwise control pin
+
+#define BUTTON0      PORTEbits.RE0    // Push button 0
+#define BUTTON1      PORTEbits.RE1    // Push button 1
+
+void motor_stop() {
+    CW_MOTOR = 0;
+    CCW_MOTOR = 0;
+}
+
+void motor_clockwise() {
+    CW_MOTOR = 1;
+    CCW_MOTOR = 0;
+}
+
+void motor_counterclockwise() {
+    CW_MOTOR = 0;
+    CCW_MOTOR = 1;
+}
+
+void main() {
+
+    /* Disable analog functions and JTAG */
+    AD1PCFG = 0xFFFF;        // All pins digital
+    DDPCON.JTAGEN = 0;       // Disable JTAG
+
+    /* Port direction configuration */
+    TRISA = 0x0000;          // PORTA as output (motor)
+    TRISE = 0xFFFF;          // PORTE as input (buttons)
+
+    /* Initial states */
+    motor_stop();
+
+    while (1) {
+
+        /* If both buttons are pressed, do nothing */
+        if (BUTTON0 && BUTTON1) {
+            motor_stop();
+        }
+
+        /* Button 0: Clockwise rotation */
+        else if (BUTTON0) {
+            Delay_ms(1000);          // Wait 1 second
+            motor_clockwise();       // Start motor CW
+            Delay_ms(1000);          // Run for 1 second
+            motor_stop();            // Stop motor
+        }
+
+        /* Button 1: Counter-clockwise rotation */
+        else if (BUTTON1) {
+            Delay_ms(1000);          // Wait 1 second
+            motor_counterclockwise();// Start motor CCW
+            Delay_ms(1000);          // Run for 1 second
+            motor_stop();            // Stop motor
+        }
+    }
+}
+
+/*
+----------------------------------------------------
+File: seven_segment.c
+Description:
+Displays Fibonacci numbers on a 4-digit seven-segment
+display using multiplexing.
+
+Before displaying the i-th Fibonacci number, the
+system waits Fibonacci(i) * 100 ms.
+
+Microcontroller: PIC32
+Compiler: mikroC PRO for PIC32
+----------------------------------------------------
+*/
+
+unsigned char binary_pattern[] =
+{
+    0x3F, // 0
+    0x06, // 1
+    0x5B, // 2
+    0x4F, // 3
+    0x66, // 4
+    0x6D, // 5
+    0x7D, // 6
+    0x07, // 7
+    0x7F, // 8
+    0x6F  // 9
+};
+
+/* Display a 4-digit number using multiplexing */
+void display_number(unsigned int num) {
+    unsigned char d1, d2, d3, d4;
+
+    d4 = num % 10;
+    d3 = (num / 10) % 10;
+    d2 = (num / 100) % 10;
+    d1 = (num / 1000) % 10;
+
+    // Digit 1
+    PORTA = binary_pattern[d1];
+    PORTE = 0x01;
+    Delay_ms(1);
+
+    // Digit 2
+    PORTA = binary_pattern[d2];
+    PORTE = 0x02;
+    Delay_ms(1);
+
+    // Digit 3
+    PORTA = binary_pattern[d3];
+    PORTE = 0x04;
+    Delay_ms(1);
+
+    // Digit 4
+    PORTA = binary_pattern[d4];
+    PORTE = 0x08;
+    Delay_ms(1);
+}
+
+/* Keep displaying a number for given milliseconds */
+void display_with_delay(unsigned int num, unsigned int delay_ms) {
+    unsigned int i;
+
+    for (i = 0; i < delay_ms / 4; i++) {
+        display_number(num);
+    }
+}
+
+void main() {
+
+    unsigned int fib_prev = 1;
+    unsigned int fib_curr = 1;
+    unsigned int fib_next;
+
+    AD1PCFG = 0xFFFF;        // Digital I/O
+    DDPCON.JTAGEN = 0;       // Disable JTAG
+
+    TRISA = 0x0000;          // PORTA as output (segments)
+    TRISE = 0x0000;          // PORTE as output (digit select)
+
+    while (1) {
+
+        // Display current Fibonacci number
+        display_with_delay(fib_curr, fib_curr * 100);
+
+        // Calculate next Fibonacci number
+        fib_next = fib_prev + fib_curr;
+        fib_prev = fib_curr;
+        fib_curr = fib_next;
+
+        // Prevent overflow beyond 4 digits
+        if (fib_curr > 9999) {
+            fib_prev = 1;
+            fib_curr = 1;
+        }
+    }
+}

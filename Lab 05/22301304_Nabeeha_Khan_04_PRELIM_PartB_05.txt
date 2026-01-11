@@ -1,0 +1,147 @@
+/*
+Nabeeha Khan
+22301304
+CS 224-04
+Lab 05 (b)
+*/
+
+/* 
+DC Motor Logic:
+Button 0 = 1, Button 1 = 0 → Motor rotates clockwise
+Button 0 = 0, Button 1 = 1 → Motor rotates counter-clockwise
+Button 0 = 0, Button 1 = 0 → Motor OFF
+Button 0 = 1, Button 1 = 1 → Motor OFF
+
+Motor runs for 1 second and then stops 
+*/
+void motor_stop()
+{
+    LATC = 0x00;   // Turn OFF motor
+}
+
+void motor_rotate_clockwise()
+{
+    LATC = 0x01;   // Clockwise direction
+}
+
+void motor_rotate_counterclockwise()
+{
+    LATC = 0x02;   // Counter-clockwise direction
+}
+
+void dc_motor_control()
+{
+    unsigned int button_state;
+
+    // Read push-buttons connected to PORTB (RB0 and RB1)
+    button_state = PORTB & 0x03;
+
+    if(button_state == 0x01)
+    {
+        motor_rotate_clockwise();
+        Delay_ms(1000);
+        motor_stop();
+    }
+    else if(button_state == 0x02)
+    {
+        motor_rotate_counterclockwise();
+        Delay_ms(1000);
+        motor_stop();
+    }
+    else
+    {
+        motor_stop();
+    }
+}
+
+/*
+Seven-Segment Display Notes:
+- PORTA is connected to segment data (a–g)
+- PORTE controls digit enabling (AN1–AN4)
+- Multiplexing is used to display 4 digits
+*/
+// Segment patterns for digits 0–9
+unsigned char seven_segment_pattern[10] =
+{
+    0x3F,  // 0
+    0x06,  // 1
+    0x5B,  // 2
+    0x4F,  // 3
+    0x66,  // 4
+    0x6D,  // 5
+    0x7D,  // 6
+    0x07,  // 7
+    0x7F,  // 8
+    0x6F   // 9
+};
+
+void display_fibonacci_number(int number)
+{
+    int digit0, digit1, digit2, digit3;
+    int refresh_count;
+
+    // Extract individual digits
+    digit0 = number % 10;
+    digit1 = (number / 10) % 10;
+    digit2 = (number / 100) % 10;
+    digit3 = (number / 1000) % 10;
+
+    // Refresh display multiple times to avoid flickering
+    for(refresh_count = 0; refresh_count < 100; refresh_count++)
+    {
+        PORTA = seven_segment_pattern[digit0];
+        PORTE = 0x01;
+        Delay_ms(1);
+
+        PORTA = seven_segment_pattern[digit1];
+        PORTE = 0x02;
+        Delay_ms(1);
+
+        PORTA = seven_segment_pattern[digit2];
+        PORTE = 0x04;
+        Delay_ms(1);
+
+        PORTA = seven_segment_pattern[digit3];
+        PORTE = 0x08;
+        Delay_ms(1);
+    }
+}
+
+/* Main Code */
+void main()
+{
+    int fib_prev = 1;
+    int fib_curr = 1;
+    int fib_next;
+
+    // Configure all analog pins as digital I/O
+    AD1PCFG = 0xFFFF;
+
+    // Disable JTAG to free PORT pins
+    DDPCON.JTAGEN = 0;
+
+    // Port configurations
+    TRISA = 0x0000;   // Seven-segment data output
+    TRISE = 0x0000;   // Seven-segment digit enable
+    TRISB = 0xFFFF;   // Push-buttons input
+    TRISC = 0x0000;   // Motor control output
+
+    LATC = 0x00;      // Ensure motor is OFF initially
+
+    while(1)
+    {
+        // DC Motor operation
+        dc_motor_control();
+
+        // Fibonacci calculation
+        fib_next = fib_prev + fib_curr;
+        fib_prev = fib_curr;
+        fib_curr = fib_next;
+
+        // Display Fibonacci number
+        display_fibonacci_number(fib_next);
+
+        // Wait proportional to Fibonacci value
+        Delay_ms(fib_next * 100);
+    }
+}

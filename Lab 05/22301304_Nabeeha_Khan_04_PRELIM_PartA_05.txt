@@ -1,0 +1,173 @@
+#Nabeeha Khan
+#22301304
+#CS 224-04
+#Lab 05(a)
+##########################################
+.data
+message1: .asciiz "\nEnter the matrix size: "
+message2: .asciiz "\nRow major summation: "
+message3: .asciiz "\nColumn major summation: "
+message4: .asciiz "\nEnter row index: "
+message5: .asciiz "\nEnter column index: "
+message6: .asciiz "\nRequired element: "
+
+.text
+main:
+	#Prompt to ask for matrix size (repeated until we get N > 0)
+	matrixSize: 
+		addi $v0, $zero, 4
+		la $a0, message1
+		syscall
+		addi $v0, $zero, 5
+		syscall
+		#Check if N > 0
+		slt $at, $zero, $v0
+		beq $at, $zero, matrixSize
+	#Using syscall to allocate memory for matrix
+	matrixAllocation:
+		addi $s0, $v0, 0  #size of matrix
+		mul $s1, $s0, $s0  #no of elements
+		sll $a0, $s1, 2
+		addi $v0, 9
+		syscall
+		addi $s2, $v0, 0  #beginning address of array
+	#Initializing values in array
+	matrixInitialization: 
+		addi $a0, $s2, 0
+		addi $a1, $s1, 0
+		addi $a2, $zero, 0   #i = 0
+		for: 
+			slt $at, $a2, $a1
+			beq $at, $zero, end
+			addi $a2, $a2, 1
+			sw $a2, 0($a0)
+			addi $a0, $a0, 4
+			j for
+		end:
+		
+	#Calling row major summation function
+	addi $a0, $s2, 0  #base address
+	addi $a1, $s0, 0  #$s0 = N
+	jal rowSummation
+	
+	#Calling column major summation function
+	addi $a0, $s2, 0  #base address
+	addi $a1, $s1, 0  #$s1 = N*N
+	jal columnSummation
+	
+	#Calling find desired element function
+	addi $a0, $s2, 0  #base address
+	addi $a1, $s0, 0  #$s0 = N
+	jal findElement
+	
+	#End program
+	addi $v0, $zero, 10
+	syscall
+
+rowSummation:
+	addi $t0, $a0, 0    #base address
+	addi $t1, $a1, 0    #$t1 = N
+	addi $t2, $zero, 0   #$t2 = i
+	addi $t4, $zero, 0   #$t4 = sum
+	addi $t5, $a0, 0   #current address
+	for1:
+		slt $at, $t2, $t1
+		beq $at, $zero, end1
+		addi $t3, $zero, 0   #$t3 = j
+		forInner:
+			slt $at, $t3, $t1
+			beq $at, $zero, endInner
+			lw $t6, 0($t5)
+			addi $t4, $t4, $t6
+			addi $t3, $t3, 1
+			sll $t6, $t1, 2
+			add $t5, $t5, $t6
+			j forInner
+		endInner:
+			addi $t2, $t2, 1
+			sll $t5, $t2, 2
+			add $t5, $t5, $t0
+			j for1
+	end1:
+		#Printing result
+		addi $v0, $zero, 4
+		la $a0, message2
+		syscall
+		addi $v0, $zero, 1
+		addi $a0, $t4
+		syscall
+	#return to caller function
+	jr $ra
+	
+columnSummation:
+	addi $t0, $a0, 0    #base address
+	addi $t1, $a1, 0    #no of elements 
+	addi $t2, $zero, 0   #$t2 = i
+	addi $t3, $zero, 0   #$t3 = sum
+	for2:
+		slt $at, $t2, $t1
+		beq $at, $zero, end2
+		lw $t4, 0($t0)
+		add $t3, $t3, $t4
+		addi $t2, $t2, 1
+		addi $t0, $t0, 4
+		j for2
+	end2:
+		#Printing result
+		addi $v0, $zero, 4
+		la $a0, message3
+		syscall
+		addi $v0, $zero, 1
+		addi $a0, $t3
+		syscall
+	#return to caller function
+	jr $ra
+
+findElement:
+	addi $t0, $a0, 0   #base address
+	addi $t1, $a1, 0   # $t1 = N
+	#take row index
+	for3:
+		addi $v0, $zero, 4
+		la $a0, message4
+		syscall
+		addi $v0, $zero, 5
+		syscall
+		slt $at, $v0, 1
+		bne $at, $zero, for3
+		slt $at, $t1, $v0
+		bne $at, $zero, for3 
+	#calculate address acc to row
+	end3:
+		addi $t2, $v0, 0   #row index (i)
+		addi $t2, $t2, -1
+		sll $t2, $t2, 2
+		addi $t0, $t0, $t2
+	#take column index
+	for4:
+		addi $v0, $zero, 4
+		la $a0, message5
+		syscall
+		addi $v0, $zero, 5
+		syscall
+		slt $at, $v0, 1
+		bne $at, $zero, for4
+		slt $at, $t1, $v0
+		bne $at, $zero, for4 
+	#calculate address acc to column
+	end4:
+		addi $t3, $v0, 0  #column index (j)
+		addi $t3, $t3, -1
+		sll $t3, $t3, 2
+		mul $t3, $t3, $t1
+		addi $t0, $t0, $t3
+	#Display element
+	addi $v0, $zero, 4
+	la $a0, message6
+	syscall
+	addi $v0, $zero, 1
+	lw $a0, 0($t0)
+	syscall
+	#return to caller function
+	jr $ra
+		
