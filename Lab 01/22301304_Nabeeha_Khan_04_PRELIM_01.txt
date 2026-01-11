@@ -1,0 +1,385 @@
+CS 224
+Lab 01
+Section: 04
+Nabeeha Khan
+22301304
+15th October 2025
+
+##Q1. Array Operations
+
+.data
+message1: .asciiz "Array: "
+message2: .asciiz "\nSum: "
+message3: .asciiz "\nMaximum: "
+message4: .asciiz "\nMinimum: "
+message5: .asciiz "\nEnter the array position whose frequency you want to check: "
+message6: .asciiz "\nEnter a valid array position!"
+message7: .asciiz "\nFrequency: "
+space: .asciiz " "
+
+array: .word 2, 4, 5, 2, 5, 0, 4, 0, 0, 4
+arrSize: .word 10
+
+.text
+Main:
+	la $s0, array
+	lw $s1, arrSize
+	
+	#Printing message for printing array
+	la $a0, message1
+	li $v0, 4
+	syscall
+	#Calling subprogram for printing array
+	addi $a0, $s0, 0    #passing array address to $a0
+	addi $a1, $s1, 0    #passing array size to $a1
+	jal PrintArray
+	
+	#Computing sum by calling subprogram
+	addi $a0, $s0, 0
+	addi $a1, $s1, 0
+	jal FindSum
+	#Add sum into $t0
+	addi $t0, $v0, 0  
+	  
+	#Print sum
+	la $a0, message2
+	li $v0, 4
+	syscall
+	addi $a0, $t0, 0
+	li $v0, 1
+	syscall	
+	
+	#Computing min and max by calling subprogram
+	addi $a0, $s0, 0
+	addi $a1, $s1, 0
+	jal FindMinMax
+	#add min into $t1
+	addi $t1, $v0, 0
+	#add max into $t2
+	addi $t2, $v1, 0
+	
+	#Printing min value
+	la $a0, message3
+	li $v0, 4
+	syscall
+	addi $a0, $t1, 0
+	li $v0, 1
+	syscall
+	
+	#Printing max value
+	la $a0, message4
+	li $v0, 4
+	syscall
+	addi $a0, $t2, 0
+	li $v0, 1
+	syscall
+	
+	loop:
+		#Prompt to ask for index position
+		la $a0, message5
+		li $v0, 4
+		syscall
+		#Take integer input 
+		li $v0, 5
+		syscall
+		bgt $v0, $zero, end   #branches if integer value is positive
+		#Error message
+		la $a0, message6
+		li $v0, 4
+		syscall
+		j loop
+	end:
+		addi $t3, $v0, -1   #index of arr = $v0 - 1 (Since $v0 will be in form of 1st, 2nd, etc.)
+
+	#Finding array location
+	sll $t3, $t3, 2    #multiply index by 4
+	add $a2, $s0, $t3    #address of arr[index]
+	#Finding frequency using subprogram
+	addi $a0, $s0, 0
+	addi $a1, $s1, 0
+	jal CountAnEntry
+	addi $t4, $v0, 0      #$t4 = freq
+	
+	#Pinting prompt
+	la $a0, message7
+	li $v0, 4
+	syscall
+	#Printing frequency
+	addi $a0, $t4, 0
+	li $v0, 1
+	syscall
+	
+	#Terminating program
+	li $v0, 10
+	syscall
+	
+PrintArray:
+	addi $t0, $a0, 0   #base address
+	addi $t1, $zero, 0    #i=0 (for looping)
+	for1:
+		beq $t1, $a1, end1    #check if i == arraySize 
+		#To print integer value in array
+		lw $a0, 0($t0)
+		li $v0, 1
+		syscall
+		#To print space between two integer value
+		la $a0, space
+		li $v0, 4
+		syscall
+		#Incrementing address and i
+		addi $t0, $t0, 4
+		addi $t1, $t1, 1
+		j for1
+	end1:
+		jr $ra
+	
+FindSum:
+	addi $v0, $zero, 0   #sum = 0
+	addi $t0, $zero, 0   #i = 0
+	for2:
+		beq $t0, $a1, end2  #check if i == arraySize
+		lw $t1, 0($a0)    #load arr[i] into $t1
+		add $v0, $v0, $t1   #add arr[i] into sum
+		addi $t0, $t0, 1   #increment i
+		addi $a0, $a0, 4   #increment base address
+		j for2
+	end2:
+		jr $ra
+
+FindMinMax:
+	lw $v0, 0($a0)     #min = arr[0]
+	lw $v1, 0($a0)	   #max = arr[0]
+	addi $t0, $zero, 1   #i = 1
+	for3:
+		beq $t0, $a1, end3    #check if i == arraySize
+		lw $t1, 0($a0)   #load arr[i] into $t1
+		blt $v0, $t1, nxtBranch   #branches if min < arr[i]
+		addi $v0, $t1, 0
+		nxtBranch: 
+			bgt $v1, $t1, nxtBranch2   #branches if max > arr[i]
+			addi $v1, $t1, 0
+		nxtBranch2: 
+			addi $t0, $t0, 1  #increment i
+			addi $a0 $a0, 4   #increment base address
+			j for3
+	end3:
+		jr $ra
+
+CountAnEntry:
+	lw $t0, 0($a2)    #arr[pos]
+	addi $t1, $zero, 0      #i = 0
+	addi $v0, $zero, 0   #freq = 0
+	for4: 
+		beq $t1, $a1, end4   #check if i == arraySize
+		lw $t2, 0($a0)    #load arr[i] into $t2
+		bne $t2, $t0, nxtBranch3    #branches if arr[pos] != arr[i]
+		addi $v0, $v0, 1
+		nxtBranch3:
+			addi $t1, $t1, 1  #increment i
+			addi $a0 $a0, 4   #increment base address
+			j for4
+	end4:
+		jr $ra
+	
+	
+##################################################################################################
+
+##Q2. Find Occurrences
+
+.data
+message1: .asciiz "Enter array size: "
+message2: .asciiz "\nEnter a valid array size!\n"
+message3: .asciiz "\nEnter a positive integer: "
+message4: .asciiz "\nArray: "
+message5: .asciiz "\nFrequency Table: "
+space: .asciiz " "
+
+FreqTable: .word 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+.text
+Main:
+	#Calling subprogram to create array
+	jal CreateInitArray
+	addi $s0, $v0, 0   #base address of arr
+	addi $s1, $v1, 0   #size of arr
+	
+	#Printing values in array
+	la $a0, message4
+	li $v0, 4
+	syscall
+	#Adding array parameters for subprogram
+	addi $a0, $s0, 0
+	addi $a1, $s1, 0
+	jal PrintArray
+	
+	#Adding FreqTable into reg
+	la $s2, FreqTable   #base address of FreqTable
+	li $s3, 10   #size of FreqTable
+	
+	#Finding Frequency using subprogram
+	addi $a0, $s0, 0
+	addi $a1, $s1, 0
+	addi $a2, $s2, 0
+	jal FindFreq
+	
+	#Printing FreqTable 
+	la $a0, message5
+	li $v0, 4
+	syscall
+	#Adding FreqTable parameters for subprogram
+	addi $a0, $s2, 0
+	addi $a1, $s3, 0
+	jal PrintArray
+	
+	#Terminating program
+	li $v0, 10
+	syscall
+	
+CreateInitArray:
+	for:
+		#prompt to ask for array size
+		la $a0, message1
+		li $v0, 4
+		syscall
+		#takes integer input
+		li $v0, 5
+		syscall
+		#branch if size > 0
+		bgt $v0, $zero, end
+		#error message
+		la $a0, message2
+		li $v0, 4
+		syscall
+		j for
+	end:
+		addi $t0, $v0, 0    #$t0 = size of array
+		
+	#Calculating number of bytes
+	sll $a0, $t0, 2     #$a0 = $t0 * 4 
+	#Dynamic array allocation
+	li $v0, 9
+	syscall
+	addi $t1, $v0, 0   #$t1 = base address of array
+	
+	addi $t2, $zero, 0   # i = 0
+	addi $t3, $t1, 0   #base addr
+	for1:
+		beq $t2, $t0, end1
+		forInner: 
+			#prompt to ask for array size
+			la $a0, message3
+			li $v0, 4
+			syscall
+			#takes integer input
+			li $v0, 5
+			syscall
+			#branch if size >= 0
+			bge $v0, $zero, endInner
+			j forInner
+		endInner:
+			sw $v0, 0($t3)   #arr[i] = $v0
+		addi $t2, $t2, 1
+		addi $t3, $t3, 4
+		j for1	
+	end1: 
+		addi $v0, $t1, 0
+		addi $v1, $t0, 0
+		jr $ra
+		
+PrintArray:
+	addi $t0, $a0, 0   #base address
+	addi $t1, $zero, 0    #i=0 (for looping)
+	for2:
+		beq $t1, $a1, end2    #check if i == arraySize 
+		#To print integer value in array
+		lw $a0, 0($t0)
+		li $v0, 1
+		syscall
+		#To print space between two integer value
+		la $a0, space
+		li $v0, 4
+		syscall
+		#Incrementing address and i
+		addi $t0, $t0, 4
+		addi $t1, $t1, 1
+		j for2
+	end2:
+		jr $ra
+
+FindFreq:
+	addi $t0, $zero, 0   #i = 0
+	for3:
+		beq $t0, $a1, end3    #check if i == arraySize
+		
+		lw $t1, 0($a0)   #arr[i]
+		beq $t1, 0, case0
+		beq $t1, 1, case1
+		beq $t1, 2, case2
+		beq $t1, 3, case3
+		beq $t1, 4, case4
+		beq $t1, 5, case5
+		beq $t1, 6, case6
+		beq $t1, 7, case7
+		beq $t1, 8, case8
+		beq $t1, 9, case9
+		j endSwitch
+		
+		case0:
+			lw $t2, 0($a2)    #$t2 = FreqTable[0]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 0($a2)    #storing new value
+			j endSwitch
+		case1:
+			lw $t2, 4($a2)    #$t2 = FreqTable[1]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 4($a2)    #storing new value
+			j endSwitch
+		case2:
+			lw $t2, 8($a2)    #$t2 = FreqTable[2]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 8($a2)    #storing new value
+			j endSwitch
+		case3:
+			lw $t2, 12($a2)    #$t2 = FreqTable[3]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 12($a2)    #storing new value
+			j endSwitch
+		case4:
+			lw $t2, 16($a2)    #$t2 = FreqTable[4]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 16($a2)    #storing new value
+			j endSwitch
+		case5:
+			lw $t2, 20($a2)    #$t2 = FreqTable[5]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 20($a2)    #storing new value
+			j endSwitch
+		case6:
+			lw $t2, 24($a2)    #$t2 = FreqTable[6]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 24($a2)    #storing new value
+			j endSwitch
+		case7:
+			lw $t2, 28($a2)    #$t2 = FreqTable[7]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 28($a2)    #storing new value
+			j endSwitch
+		case8:	
+			lw $t2, 32($a2)    #$t2 = FreqTable[8]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 32($a2)    #storing new value
+			j endSwitch
+		case9:
+			lw $t2, 36($a2)    #$t2 = FreqTable[9]
+			addi $t2, $t2, 1   #incrementing freq
+			sw $t2, 36($a2)    #storing new value
+		endSwitch:
+			#Incrementing base address and i
+			addi $t0, $t0, 1
+			addi $a0, $a0, 4
+			j for3
+	end3:
+		jr $ra 
+
+##################################################################
+
